@@ -1,63 +1,99 @@
 package com.mycompany.fastchat;
-import java.util.Scanner;
+
+import javax.swing.JOptionPane;
 import java.util.ArrayList;
-import java.io.*;
+import java.io.FileWriter;
+import java.io.IOException;
 
 public class Fastchat {
-    // Final POE - Arrays for Part 3
-    static ArrayList<String> sentMessages = new ArrayList<>();
     static ArrayList<String> storedMessages = new ArrayList<>();
-    static ArrayList<String> disregardedMessages = new ArrayList<>();
-    static ArrayList<String> messageHashes = new ArrayList<>();
-    static ArrayList<String> messageIDs = new ArrayList<>();
-    static ArrayList<String> recipients = new ArrayList<>();
+    static ArrayList<String> storedIDs = new ArrayList<>();
+    static ArrayList<String> storedHashes = new ArrayList<>();
+    static ArrayList<String> storedRecipients = new ArrayList<>();
 
     public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
         Login login = new Login();
-        Message msgHelper = new Message();
-        
-        System.out.println("REGISTER");
-        System.out.print("Enter username: ");
-        String username = sc.nextLine();
-        System.out.print("Enter password: ");
-        String password = sc.nextLine();
-        System.out.print("Enter cell (+27...): ");
-        String cell = sc.nextLine();
-        
-        String regResult = login.registerUser(username, password, cell);
-        System.out.println(regResult);
-        if (!regResult.equals("User registered successfully.")) return;
-        
-        System.out.println("\n=== LOGIN ===");
-        System.out.print("Enter username: ");
-        String lu = sc.nextLine();
-        System.out.print("Enter password: ");
-        String lp = sc.nextLine();
-        
-        boolean logged = login.loginUser(lu, lp, username, password);
-        System.out.println(login.returnLoginStatus(logged));
-        if (!logged) return;
-        
-        System.out.println("\nWelcome to FastChat!");
-        int messageNumber = 0;
+        Message msg = new Message();
 
-        while(true){
-            System.out.println("1) Send Message 2) Show Report 3) Quit 4) Stored Messages");
-            
-            System.out.print("Choice: ");
-            String choice = sc.nextLine();
-            if(choice.equals("1")){
-                System.out.print("How many messages do you want to send? ");
-                int count = Integer.parseInt(sc.nextLine());
-                for(int i = 0; i < count; i++){
-                    messageNumber++;
-                    System.out.print("Recipient (+...): ");
-                    String rec = sc.nextLine();
-                    System.out.println(msgHelper.checkRecipientCell(rec));
-                    System.out.print("Enter message (max 250): ");
-                    String message = sc.nextLine();
-                    System.out.println(msgHelper.checkMessageLength(message));
-                    if(message.length() > 250){
-                        messageNumber--;
-                        continue;
+        String username = JOptionPane.showInputDialog("Enter username (must contain _ and <=5 chars, e.g. kyl_1):");
+        String password = JOptionPane.showInputDialog("Enter password (8+ chars, capital, number, special, e.g. Ch&&sec@ke99!):");
+        String cell = JOptionPane.showInputDialog("Enter cellphone (e.g. +27838968976):");
+
+        String regResult = login.registerUser(username, password, cell);
+        JOptionPane.showMessageDialog(null, regResult);
+        if (!regResult.equals("User registered successfully.")) {
+            return;
+        }
+
+        String enteredUser = JOptionPane.showInputDialog("Login - Enter username:");
+        String enteredPass = JOptionPane.showInputDialog("Login - Enter password:");
+        boolean loggedIn = login.loginUser(enteredUser, enteredPass, username, password);
+        JOptionPane.showMessageDialog(null, login.returnLoginStatus(loggedIn));
+        if (!loggedIn) {
+            return;
+        }
+
+        JOptionPane.showMessageDialog(null, "Welcome to QuickChat.");
+
+        int messageCount = 0;
+        while (true) {
+            String menu = JOptionPane.showInputDialog("Choose:\n1. Send Message\n2. Show Recently Sent Messages\n3. Quit\n4. Stored Messages Menu");
+            if (menu == null || menu.equals("3")) {
+                JOptionPane.showMessageDialog(null, "Total messages sent: " + messageCount);
+                break;
+            }
+            if (menu.equals("1")) {
+                String recipient = JOptionPane.showInputDialog("Enter recipient cell (e.g. +27718693002):");
+                JOptionPane.showMessageDialog(null, msg.checkRecipientCell(recipient));
+                String text = JOptionPane.showInputDialog("Enter message (max 250 chars):");
+                JOptionPane.showMessageDialog(null, msg.checkMessageLength(text));
+                if (text.length() > 250) {
+                    continue;
+                }
+                String id = msg.createMessageID();
+                String hash = msg.makeMessageHash(id, messageCount, text);
+                String choice = JOptionPane.showInputDialog("1. Send\n2. Disregard\n3. Store to send later");
+                if (choice.equals("1")) {
+                    JOptionPane.showMessageDialog(null, "Message sent!\nID: " + id + "\nHash: " + hash);
+                    messageCount++;
+                } else if (choice.equals("3")) {
+                    storedMessages.add(text);
+                    storedIDs.add(id);
+                    storedHashes.add(hash);
+                    storedRecipients.add(recipient);
+                    saveToJson();
+                    JOptionPane.showMessageDialog(null, "Message successfully stored.");
+                    messageCount++;
+                }
+            } else if (menu.equals("4")) {
+                if (storedMessages.isEmpty()) {
+                    JOptionPane.showMessageDialog(null, "No stored messages.");
+                } else {
+                    String out = "Stored Messages:\n";
+                    for (int i = 0; i < storedMessages.size(); i++) {
+                        out += "To: " + storedRecipients.get(i) + "\nID: " + storedIDs.get(i) + "\nHash: " + storedHashes.get(i) + "\nMsg: " + storedMessages.get(i) + "\n\n";
+                    }
+                    JOptionPane.showMessageDialog(null, out);
+                }
+            }
+        }
+    }
+
+    public static void saveToJson() {
+        try {
+            FileWriter writer = new FileWriter("storedMessages.json");
+            writer.write("[\n");
+            for (int i = 0; i < storedMessages.size(); i++) {
+                writer.write("{\"recipient\":\"" + storedRecipients.get(i) + "\",\"id\":\"" + storedIDs.get(i) + "\",\"hash\":\"" + storedHashes.get(i) + "\",\"message\":\"" + storedMessages.get(i) + "\"}");
+                if (i < storedMessages.size() - 1) {
+                    writer.write(",");
+                }
+                writer.write("\n");
+            }
+            writer.write("]");
+            writer.close();
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(null, "Error saving JSON: " + e.getMessage());
+        }
+    }
+}
