@@ -1,0 +1,9 @@
+FastChat/
+  .github/workflows/TestJava.yml
+  src/main/java/com/mycompany/fastchat/Login.java
+  src/main/java/com/mycompany/fastchat/Message.java
+  src/main/java/com/mycompany/fastchat/Fastchat.java
+  src/test/java/com/mycompany/fastchat/LoginTest.java
+  src/test/java/com/mycompany/fastchat/MessageTest.java
+  pom.xml  <- HERE
+  README.md
